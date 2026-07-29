@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아침 한글 읽기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-sky-50 flex flex-col font-sans selection:bg-sky-200">
+    <!-- 상단 네비게이션 -->
+    <header class="bg-white shadow-sm p-4">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <h1 class="text-2xl font-bold text-slate-800">☀️ 아침 한글 읽기</h1>
+            <div id="tabs-container" class="flex flex-wrap justify-center gap-2">
+                <!-- 탭 버튼이 JavaScript를 통해 생성됨 -->
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 영역 -->
+    <main class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-5xl mx-auto">
+        <!-- 상태 표시줄 -->
+        <div class="w-full flex justify-between items-end mb-8 px-4">
+            <div class="text-left">
+                <h2 id="stage-title" class="text-3xl font-extrabold text-slate-800 mb-2"></h2>
+                <p id="stage-desc" class="text-xl text-slate-600 font-medium text-blue-600"></p>
+            </div>
+            <div class="text-right">
+                <div class="text-4xl font-black text-blue-700 bg-blue-100 px-6 py-3 rounded-2xl shadow-sm">
+                    <span id="current-student"></span> <span class="text-2xl text-blue-500 font-bold">/ 30번 학생</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 글자 표시 보드 -->
+        <div class="w-full bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-8 border-4 border-slate-100">
+            <div id="letters-grid" class="grid gap-6">
+                <!-- 글자 카드가 JavaScript를 통해 생성됨 -->
+            </div>
+        </div>
+
+        <!-- 컨트롤 버튼 -->
+        <div class="w-full flex items-center justify-between px-4">
+            <button id="btn-prev" class="flex items-center gap-2 px-6 py-4 rounded-2xl font-bold text-xl text-slate-600 bg-white shadow hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                이전
+            </button>
+
+            <button id="btn-refresh" class="flex items-center gap-2 px-6 py-4 rounded-2xl font-bold text-lg text-slate-500 bg-white shadow hover:bg-slate-50 transition-all" title="현재 학생 문제 다시 섞기">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                현재 문제 다시 섞기
+            </button>
+
+            <button id="btn-next" class="flex items-center gap-2 px-10 py-5 rounded-2xl font-bold text-2xl text-white bg-blue-600 shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <span id="next-text">다음 학생 (완료)</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const STAGES = [
+            { id: 1, title: '1단계', desc: 'ㅏ, ㅓ, ㅗ, ㅜ', pool: ['ㅏ', 'ㅓ', 'ㅗ', 'ㅜ'], count: 10 },
+            { id: 2, title: '2단계', desc: 'ㅡ, ㅣ, ㅔ, ㅐ', pool: ['ㅡ', 'ㅣ', 'ㅔ', 'ㅐ'], count: 10 },
+            { id: 3, title: '3단계', desc: 'ㅑ, ㅕ, ㅛ, ㅠ', pool: ['ㅑ', 'ㅕ', 'ㅛ', 'ㅠ'], count: 10 },
+            { id: 4, title: '4단계', desc: '모음 종합 (12개)', pool: ['ㅏ','ㅑ','ㅓ','ㅕ','ㅗ','ㅛ','ㅜ','ㅠ','ㅡ','ㅣ','ㅔ','ㅐ'], count: 12 },
+            { id: 5, title: '5단계', desc: 'ㄱ, ㅋ, ㄲ', pool: ['ㄱ', 'ㅋ', 'ㄲ'], count: 10 },
+            { id: 6, title: '6단계', desc: 'ㅁ, ㅂ, ㅍ, ㅃ', pool: ['ㅁ', 'ㅂ', 'ㅍ', 'ㅃ'], count: 10 },
+            { id: 7, title: '7단계', desc: 'ㅅ, ㅈ, ㅊ, ㅆ, ㅉ', pool: ['ㅅ', 'ㅈ', 'ㅊ', 'ㅆ', 'ㅉ'], count: 10 },
+            { id: 8, title: '8단계', desc: 'ㄴ, ㄷ, ㅌ, ㄸ', pool: ['ㄴ', 'ㄷ', 'ㅌ', 'ㄸ'], count: 10 },
+            { id: 9, title: '9단계', desc: 'ㄹ, ㅇ, ㅎ', pool: ['ㄹ', 'ㅇ', 'ㅎ'], count: 10 },
+            { id: 10, title: '10단계', desc: '자음 종합 (12개)', pool: ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ','ㄲ','ㄸ','ㅃ','ㅆ','ㅉ'], count: 12 },
+        ];
+
+        const TOTAL_STUDENTS = 30;
+        let activeStageIndex = 0;
+        let currentStudent = 1;
+        let studentSets = [];
+
+        // DOM 요소 캐싱
+        const tabsContainer = document.getElementById('tabs-container');
+        const stageTitle = document.getElementById('stage-title');
+        const stageDesc = document.getElementById('stage-desc');
+        const currentStudentEl = document.getElementById('current-student');
+        const lettersGrid = document.getElementById('letters-grid');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const nextText = document.getElementById('next-text');
+
+        // 초기화
+        function init() {
+            renderTabs();
+            generateSets(STAGES[activeStageIndex]);
+            attachEvents();
+        }
+
+        // 30명 분량 세트 생성
+        function generateSets(stage) {
+            studentSets = Array.from({ length: TOTAL_STUDENTS }, () => {
+                return Array.from({ length: stage.count }, () => {
+                    const randomIndex = Math.floor(Math.random() * stage.pool.length);
+                    return stage.pool[randomIndex];
+                });
+            });
+            currentStudent = 1;
+            renderStage();
+        }
+
+        // 탭 렌더링
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            STAGES.forEach((stage, index) => {
+                const btn = document.createElement('button');
+                btn.innerText = stage.title;
+                btn.className = `px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                    activeStageIndex === index
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`;
+                btn.onclick = () => {
+                    activeStageIndex = index;
+                    renderTabs();
+                    generateSets(STAGES[activeStageIndex]);
+                };
+                tabsContainer.appendChild(btn);
+            });
+        }
+
+        // 화면 렌더링
+        function renderStage() {
+            const stage = STAGES[activeStageIndex];
+            
+            // 텍스트 업데이트
+            stageTitle.innerText = stage.title;
+            stageDesc.innerText = stage.desc;
+            currentStudentEl.innerText = currentStudent;
+
+            // 그리드 레이아웃 설정
+            lettersGrid.className = `grid gap-6 ${stage.count === 12 ? 'grid-cols-4 md:grid-cols-6' : 'grid-cols-5'}`;
+            
+            // 글자 카드 렌더링
+            const currentLetters = studentSets[currentStudent - 1] || [];
+            lettersGrid.innerHTML = currentLetters.map(letter => `
+                <div class="aspect-square flex items-center justify-center bg-slate-50 rounded-2xl border-2 border-slate-100 shadow-inner text-6xl md:text-8xl font-black text-slate-800">
+                    ${letter}
+                </div>
+            `).join('');
+
+            // 버튼 상태 제어
+            btnPrev.disabled = currentStudent === 1;
+            if (currentStudent === TOTAL_STUDENTS) {
+                nextText.innerText = '처음으로 돌아가기';
+                btnNext.classList.replace('bg-blue-600', 'bg-green-600');
+                btnNext.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+            } else {
+                nextText.innerText = '다음 학생 (완료)';
+                btnNext.classList.replace('bg-green-600', 'bg-blue-600');
+                btnNext.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+            }
+        }
+
+        // 이벤트 리스너 부착
+        function attachEvents() {
+            btnPrev.addEventListener('click', () => {
+                if (currentStudent > 1) {
+                    currentStudent--;
+                    renderStage();
+                }
+            });
+
+            btnNext.addEventListener('click', () => {
+                if (currentStudent < TOTAL_STUDENTS) {
+                    currentStudent++;
+                } else {
+                    currentStudent = 1;
+                }
+                renderStage();
+            });
+
+            btnRefresh.addEventListener('click', () => {
+                const stage = STAGES[activeStageIndex];
+                const newSet = Array.from({ length: stage.count }, () => {
+                    const randomIndex = Math.floor(Math.random() * stage.pool.length);
+                    return stage.pool[randomIndex];
+                });
+                studentSets[currentStudent - 1] = newSet;
+                renderStage();
+            });
+        }
+
+        // 앱 실행
+        init();
+    </script>
+</body>
+</html>

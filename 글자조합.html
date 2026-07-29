@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자음 모음이 만나요</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Nanum+Myeongjo:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            /* 배경을 시원한 파란색 그라데이션으로 변경 */
+            font-family: 'Gaegu', cursive;
+            background: radial-gradient(circle, #f0f9ff 0%, #e0f2fe 100%);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* 둥글둥글하고 귀여운 제목 스타일 */
+        .cute-round {
+            font-family: 'Gaegu', cursive;
+            font-weight: 700;
+            filter: drop-shadow(2px 2px 0px white);
+        }
+
+        .drop-zone {
+            border: 4px dashed #bae6fd; /* 파란색 계열 */
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.active {
+            border-color: #0ea5e9; /* 하늘색 */
+            background-color: #f0f9ff;
+            transform: scale(1.05);
+        }
+
+        .jamo-card {
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .jamo-card:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: burst 0.8s ease-out forwards;
+        }
+
+        @keyframes burst {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        .tab-btn.active {
+            background-color: #0ea5e9; /* 파란색 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Header & Tabs -->
+    <header class="absolute top-6 text-center w-full">
+        <!-- 제목을 둥근 글자체와 파란색으로 변경 -->
+        <h1 class="cute-round text-7xl text-sky-600 mb-6">자음 모음이 만나요</h1>
+        
+        <div class="flex justify-center gap-2 mb-4">
+            <button onclick="changeMode('basic')" id="tab-basic" class="tab-btn active px-6 py-2 rounded-full bg-white border-2 border-sky-200 text-sky-400 font-bold transition-all">기본</button>
+            <button onclick="changeMode('double')" id="tab-double" class="tab-btn px-6 py-2 rounded-full bg-white border-2 border-sky-200 text-sky-400 font-bold transition-all">이중모음</button>
+            <button onclick="changeMode('batchim')" id="tab-batchim" class="tab-btn px-6 py-2 rounded-full bg-white border-2 border-sky-200 text-sky-400 font-bold transition-all">받침</button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-7xl flex flex-col items-center h-2/3 mt-24">
+        
+        <div class="w-full flex justify-between items-center flex-grow">
+            <!-- Left: Consonants -->
+            <div id="consonants" class="flex flex-wrap content-center justify-center gap-3 w-1/4 h-full p-4 overflow-y-auto">
+                <!-- Dynamically filled -->
+            </div>
+
+            <!-- Center: Combination Area -->
+            <div class="flex flex-col items-center gap-8 w-2/4">
+                <!-- 메인 영역 테두리 색상 변경 -->
+                <div id="combine-area" class="relative flex flex-col items-center gap-4 p-8 bg-white rounded-3xl shadow-2xl border-4 border-sky-100 min-w-[400px]">
+                    <div class="flex items-center gap-4">
+                        <div id="slot-consonant" class="drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50">초성</div>
+                        <div class="text-3xl text-sky-300 font-bold">+</div>
+                        <div id="slot-vowel" class="drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50">중성</div>
+                    </div>
+                    
+                    <!-- Batchim Slot (Hidden by default) -->
+                    <div id="batchim-slot-container" class="hidden flex flex-col items-center gap-2">
+                        <div class="text-3xl text-sky-300 font-bold">+</div>
+                        <div id="slot-batchim" class="drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50">종성</div>
+                    </div>
+                    
+                    <!-- Result Overlay -->
+                    <div id="result-overlay" class="absolute inset-0 bg-white rounded-3xl flex items-center justify-center opacity-0 pointer-events-none transition-all duration-500 scale-50 z-50">
+                        <span id="result-text" class="text-9xl text-sky-600 font-bold cute-round"></span>
+                    </div>
+                </div>
+                
+                <button id="reset-btn" class="px-8 py-3 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-full text-xl font-bold transition-colors">다시 만들기</button>
+            </div>
+
+            <!-- Right: Vowels/Batchim List -->
+            <div id="right-container" class="flex flex-wrap content-center justify-center gap-3 w-1/4 h-full p-4 overflow-y-auto">
+                <!-- Dynamically filled with vowels or batchim -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Message Box -->
+    <div id="toast" class="fixed bottom-12 bg-sky-800 text-white px-6 py-3 rounded-full text-lg transform translate-y-24 transition-transform duration-300 shadow-xl z-[100]">
+        글자가 완성되었어요!
+    </div>
+
+    <script>
+        const apiKey = ""; 
+
+        const data = {
+            consonants: ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㄲ', 'ㄸ', 'ㅃ', 'ㅆ', 'ㅉ'],
+            simpleVowels: ['ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ'],
+            doubleVowels: ['ㅐ', 'ㅒ', 'ㅔ', 'ㅖ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅢ'],
+            batchim: ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㄲ', 'ㅆ', 'ㄳ', 'ㄵ', 'ㄶ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅄ']
+        };
+
+        const CHO_MAP = { 'ㄱ':0, 'ㄲ':1, 'ㄴ':2, 'ㄷ':3, 'ㄸ':4, 'ㄹ':5, 'ㅁ':6, 'ㅂ':7, 'ㅃ':8, 'ㅅ':9, 'ㅆ':10, 'ㅇ':11, 'ㅈ':12, 'ㅉ':13, 'ㅊ':14, 'ㅋ':15, 'ㅌ':16, 'ㅍ':17, 'ㅎ':18 };
+        const JUNG_MAP = { 'ㅏ':0, 'ㅐ':1, 'ㅑ':2, 'ㅒ':3, 'ㅓ':4, 'ㅔ':5, 'ㅕ':6, 'ㅖ':7, 'ㅗ':8, 'ㅘ':9, 'ㅙ':10, 'ㅚ':11, 'ㅛ':12, 'ㅜ':13, 'ㅝ':14, 'ㅞ':15, 'ㅟ':16, 'ㅠ':17, 'ㅡ':18, 'ㅢ':19, 'ㅣ':20 };
+        const JONG_MAP = { '':0, 'ㄱ':1, 'ㄲ':2, 'ㄳ':3, 'ㄴ':4, 'ㄵ':5, 'ㄶ':6, 'ㄷ':7, 'ㄹ':8, 'ㄺ':9, 'ㄻ':10, 'ㄼ':11, 'ㄽ':12, 'ㄾ':13, 'ㄿ':14, 'ㅀ':15, 'ㅁ':16, 'ㅂ':17, 'ㅄ':18, 'ㅅ':19, 'ㅆ':20, 'ㅇ':21, 'ㅈ':22, 'ㅊ':23, 'ㅋ':24, 'ㅌ':25, 'ㅍ':26, 'ㅎ':27 };
+
+        let currentMode = 'basic'; 
+        let selectedConsonant = null;
+        let selectedVowel = null;
+        let selectedBatchim = '';
+        let isCombining = false;
+
+        const conContainer = document.getElementById('consonants');
+        const rightContainer = document.getElementById('right-container');
+        const slotC = document.getElementById('slot-consonant');
+        const slotV = document.getElementById('slot-vowel');
+        const slotB = document.getElementById('slot-batchim');
+        const batchimSlotArea = document.getElementById('batchim-slot-container');
+        const resultOverlay = document.getElementById('result-overlay');
+        const resultText = document.getElementById('result-text');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function init() {
+            renderJamos();
+            setupDragEvents();
+        }
+
+        function changeMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${mode}`).classList.add('active');
+            
+            if (mode === 'batchim') {
+                batchimSlotArea.classList.remove('hidden');
+            } else {
+                batchimSlotArea.classList.add('hidden');
+            }
+
+            resetCombination();
+            renderJamos();
+        }
+
+        function renderJamos() {
+            conContainer.innerHTML = '';
+            rightContainer.innerHTML = '';
+
+            data.consonants.forEach(c => createCard(c, 'consonant', conContainer));
+
+            if (currentMode === 'basic') {
+                data.simpleVowels.forEach(v => createCard(v, 'vowel', rightContainer));
+            } else if (currentMode === 'double') {
+                data.doubleVowels.forEach(v => createCard(v, 'vowel', rightContainer));
+            } else if (currentMode === 'batchim') {
+                const vTitle = document.createElement('div');
+                vTitle.className = 'w-full text-center font-bold text-sky-500 py-2 border-b border-sky-100';
+                vTitle.innerText = "모음";
+                rightContainer.appendChild(vTitle);
+                data.simpleVowels.forEach(v => createCard(v, 'vowel', rightContainer));
+                
+                const bTitle = document.createElement('div');
+                bTitle.className = 'w-full text-center font-bold text-teal-500 py-2 border-b border-sky-100 mt-4';
+                bTitle.innerText = "받침";
+                rightContainer.appendChild(bTitle);
+                data.batchim.forEach(b => createCard(b, 'batchim', rightContainer));
+            }
+        }
+
+        function createCard(char, type, container) {
+            const card = document.createElement('div');
+            let colorClass = 'text-blue-500 border-blue-50';
+            if (type === 'vowel') colorClass = 'text-sky-500 border-sky-50';
+            if (type === 'batchim') colorClass = 'text-teal-600 border-teal-50';
+
+            card.className = `jamo-card w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center text-2xl font-bold border-2 transition-all hover:bg-sky-50 ${colorClass}`;
+            card.innerText = char;
+            card.draggable = true;
+            card.dataset.char = char;
+            card.dataset.type = type;
+            container.appendChild(card);
+        }
+
+        function setupDragEvents() {
+            let draggedItem = null;
+
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('jamo-card')) {
+                    draggedItem = e.target;
+                    e.target.style.opacity = '0.5';
+                }
+            });
+
+            document.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('jamo-card')) e.target.style.opacity = '1';
+            });
+
+            [slotC, slotV, slotB].forEach(slot => {
+                slot.addEventListener('dragover', (e) => e.preventDefault());
+                slot.addEventListener('dragenter', (e) => slot.classList.add('active'));
+                slot.addEventListener('dragleave', (e) => slot.classList.remove('active'));
+                slot.addEventListener('drop', (e) => {
+                    slot.classList.remove('active');
+                    handleDrop(slot, draggedItem);
+                });
+            });
+
+            // Touch Support
+            let activeTouchItem = null;
+            document.addEventListener('touchstart', (e) => {
+                const target = e.target.closest('.jamo-card');
+                if (target) {
+                    activeTouchItem = target;
+                    target.style.position = 'fixed';
+                    target.style.zIndex = '1000';
+                    moveAt(e.touches[0].pageX, e.touches[0].pageY);
+                }
+            }, {passive: false});
+
+            document.addEventListener('touchmove', (e) => {
+                if (activeTouchItem) {
+                    e.preventDefault();
+                    moveAt(e.touches[0].pageX, e.touches[0].pageY);
+                }
+            }, {passive: false});
+
+            document.addEventListener('touchend', (e) => {
+                if (activeTouchItem) {
+                    const touch = e.changedTouches[0];
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const slot = dropTarget?.closest('.drop-zone');
+                    activeTouchItem.style.position = '';
+                    activeTouchItem.style.zIndex = '';
+                    if (slot) handleDrop(slot, activeTouchItem);
+                    activeTouchItem = null;
+                }
+            });
+
+            function moveAt(px, py) {
+                if (!activeTouchItem) return;
+                activeTouchItem.style.left = px - activeTouchItem.offsetWidth / 2 + 'px';
+                activeTouchItem.style.top = py - activeTouchItem.offsetHeight / 2 + 'px';
+            }
+        }
+
+        function handleDrop(slot, item) {
+            if (!item || isCombining) return;
+            const type = item.dataset.type;
+            const char = item.dataset.char;
+
+            if (slot.id === 'slot-consonant' && type === 'consonant') {
+                selectedConsonant = char;
+                slot.innerText = char;
+                slot.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-6xl text-blue-600 bg-blue-50 border-blue-200 border-solid';
+            } else if (slot.id === 'slot-vowel' && type === 'vowel') {
+                selectedVowel = char;
+                slot.innerText = char;
+                slot.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-6xl text-sky-600 bg-sky-50 border-sky-200 border-solid';
+            } else if (slot.id === 'slot-batchim' && type === 'batchim') {
+                selectedBatchim = char;
+                slot.innerText = char;
+                slot.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-6xl text-teal-600 bg-teal-50 border-teal-200 border-solid';
+            }
+            checkCombination();
+        }
+
+        function checkCombination() {
+            if (currentMode === 'batchim') {
+                if (selectedConsonant && selectedVowel && selectedBatchim) combine();
+            } else {
+                if (selectedConsonant && selectedVowel) combine();
+            }
+        }
+
+        function combine() {
+            isCombining = true;
+            const cho = CHO_MAP[selectedConsonant];
+            const jung = JUNG_MAP[selectedVowel];
+            const jong = JONG_MAP[selectedBatchim] || 0;
+            
+            const code = (cho * 21 + jung) * 28 + jong + 44032;
+            const resultChar = String.fromCharCode(code);
+
+            setTimeout(() => {
+                createParticles();
+                resultText.innerText = resultChar;
+                resultOverlay.classList.remove('opacity-0', 'scale-50');
+                resultOverlay.classList.add('opacity-100', 'scale-100');
+                showToast(`'${resultChar}' 글자가 완성되었어요!`);
+                speak(resultChar);
+            }, 300);
+        }
+
+        async function speak(text) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: text }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+                        }
+                    })
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                const pcm = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                if (pcm) playPCM(pcm);
+            } catch (e) { console.error(e); }
+        }
+
+        function playPCM(base64) {
+            const binary = atob(base64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+            const wav = createWavHeader(len, 24000);
+            const blob = new Blob([wav, bytes], { type: 'audio/wav' });
+            new Audio(URL.createObjectURL(blob)).play();
+        }
+
+        function createWavHeader(len, rate) {
+            const buffer = new ArrayBuffer(44);
+            const view = new DataView(buffer);
+            view.setUint32(0, 0x52494646, false); view.setUint32(4, 36 + len, true);
+            view.setUint32(8, 0x57415645, false); view.setUint32(12, 0x666d7420, false);
+            view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true); view.setUint32(24, rate, true);
+            view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true); view.setUint32(36, 0x64617461, false);
+            view.setUint32(40, len, true);
+            return buffer;
+        }
+
+        function createParticles() {
+            const colors = ['#0ea5e9', '#38bdf8', '#2dd4bf', '#818cf8'];
+            for (let i = 0; i < 20; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle w-3 h-3 rounded-full';
+                p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                p.style.left = '50%'; p.style.top = '50%';
+                p.style.setProperty('--tx', `${(Math.random() - 0.5) * 300}px`);
+                p.style.setProperty('--ty', `${(Math.random() - 0.5) * 300}px`);
+                resultOverlay.appendChild(p);
+                setTimeout(() => p.remove(), 1000);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('translate-y-24');
+            setTimeout(() => toast.classList.add('translate-y-24'), 3000);
+        }
+
+        function resetCombination() {
+            selectedConsonant = null;
+            selectedVowel = null;
+            selectedBatchim = '';
+            isCombining = false;
+            
+            slotC.innerText = '초성';
+            slotC.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50';
+            slotV.innerText = '중성';
+            slotV.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50';
+            slotB.innerText = '종성';
+            slotB.className = 'drop-zone w-28 h-28 rounded-2xl flex items-center justify-center text-5xl text-slate-300 font-bold bg-slate-50';
+            
+            resultOverlay.classList.add('opacity-0', 'scale-50');
+            resultOverlay.classList.remove('opacity-100', 'scale-100');
+        }
+
+        resetBtn.addEventListener('click', resetCombination);
+        window.onload = init;
+    </script>
+</body>
+</html>
