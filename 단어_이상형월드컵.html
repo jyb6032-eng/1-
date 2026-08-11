@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>단어 이상형 월드컵</title>
+<style>
+  :root{
+    --bg1:#f0f6ff;
+    --bg2:#e6f0ff;
+    --card-bg:#ffffff;
+    --accent:#4a6cf7;
+    --accent2:#ff8c42;
+    --accentA:#ff8c42;
+    --accentB:#4ecdc4;
+    --text:#2b2b3a;
+    --muted:#8a8a9a;
+    --shadow: 0 10px 30px rgba(0,0,0,0.10);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    color:var(--text);
+    overflow-x:hidden;
+  }
+  #app{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding:20px 16px 40px;
+  }
+  .header{
+    width:100%;
+    max-width:520px;
+    text-align:center;
+    margin-bottom:14px;
+  }
+  .title{
+    font-size:21px;
+    font-weight:800;
+    letter-spacing:-0.5px;
+    margin:6px 0 2px;
+  }
+  .subtitle{
+    font-size:13px;
+    color:var(--muted);
+    margin:0;
+  }
+  .hidden{ display:none !important; }
+  .btn{
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:700;
+    border-radius:16px;
+    padding:15px 28px;
+    font-size:16px;
+    background: var(--accent);
+    color:#fff;
+    box-shadow: var(--shadow);
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    width:100%;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn.secondary{
+    background: #fff;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+  }
+  .btn.small{
+    width:auto;
+    padding:9px 16px;
+    font-size:13px;
+    border-radius:12px;
+  }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  /* ===== 설정 화면 ===== */
+  .setup-screen{
+    width:100%;
+    max-width:520px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .section-label{
+    font-size:14px;
+    font-weight:800;
+    margin:4px 2px 0;
+    color:var(--text);
+  }
+  .topic-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+  .topic-btn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    background:#fff;
+    border:2px solid transparent;
+    border-radius:16px;
+    padding:14px 8px;
+    box-shadow: var(--shadow);
+    cursor:pointer;
+    font-family:inherit;
+    font-weight:700;
+    font-size:13px;
+    color:var(--text);
+    transition: border-color .15s ease, transform .12s ease;
+  }
+  .topic-btn:active{ transform: scale(0.96); }
+  .topic-btn.active{
+    border-color: var(--accent);
+    background: #eef2ff;
+  }
+  .topic-emoji{ font-size:26px; }
+  .manual-btn{
+    grid-column: span 2;
+    background:#fff7ec;
+  }
+
+  .topic-name-row{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .topic-name-input{
+    width:100%;
+    padding:12px 14px;
+    border-radius:12px;
+    border:2px solid #e4e4ee;
+    font-size:15px;
+    font-family:inherit;
+    font-weight:700;
+  }
+  .topic-name-input:focus{ outline:none; border-color:var(--accent); }
+
+  .words-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .hint-text{
+    font-size:12px;
+    color:var(--muted);
+    margin:0 2px;
+  }
+  .word-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .word-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border-radius:14px;
+    padding:6px 10px;
+    box-shadow: var(--shadow);
+  }
+  .word-idx{
+    font-size:12px;
+    font-weight:800;
+    color:#fff;
+    background: var(--accent);
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .word-input{
+    flex:1;
+    min-width:0;
+    border:none;
+    outline:none;
+    font-size:15px;
+    font-family:inherit;
+    padding:8px 0;
+    background:transparent;
+    color:var(--text);
+    font-weight:600;
+  }
+  .word-clear{
+    border:none;
+    background:#f2f2f6;
+    color:var(--muted);
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    font-size:13px;
+    cursor:pointer;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .error-text{
+    font-size:13px;
+    color:#e0453c;
+    font-weight:700;
+    min-height:18px;
+    margin:0 2px;
+  }
+
+  /* ===== 매치 화면 ===== */
+  .progress-wrap{
+    width:100%;
+    max-width:520px;
+    margin:14px 0 6px;
+  }
+  .progress-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:6px;
+    font-weight:600;
+  }
+  .progress-bar-bg{
+    width:100%;
+    height:8px;
+    background:rgba(0,0,0,0.08);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .progress-bar-fill{
+    height:100%;
+    background: linear-gradient(90deg, var(--accent), #8aa4ff);
+    border-radius:8px;
+    transition: width .4s ease;
+  }
+  .round-badge{
+    display:inline-block;
+    background: var(--accent);
+    color:#fff;
+    font-weight:700;
+    font-size:13px;
+    padding:6px 16px;
+    border-radius:999px;
+    margin:10px 0 20px;
+    box-shadow: var(--shadow);
+  }
+  .match-screen{
+    width:100%;
+    max-width:520px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .match-topic{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:700;
+    margin-bottom:2px;
+  }
+  .vs-wrap{
+    display:flex;
+    flex-direction:row;
+    align-items:stretch;
+    justify-content:center;
+    width:100%;
+    gap:10px;
+  }
+  .word-card{
+    flex:1 1 0;
+    min-width:0;
+    background: var(--card-bg);
+    border-radius:20px;
+    box-shadow: var(--shadow);
+    padding:26px 8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    border: 3px solid transparent;
+    transition: transform .12s ease, border-color .12s ease;
+    user-select:none;
+    min-height:120px;
+  }
+  .word-card.cardA{ border-color:#ffd8bb; }
+  .word-card.cardB{ border-color:#c8f2ee; }
+  .word-card:active{ transform: scale(0.97); }
+  .word-card.picked{
+    animation: pickPulse .35s ease;
+    border-color: #2ecc71 !important;
+  }
+  .word-card.bye{
+    cursor:default;
+    color: var(--muted);
+    background:#f7f7fa;
+  }
+  @keyframes pickPulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.05); }
+    100%{ transform:scale(1); }
+  }
+  .word-text{
+    font-size: clamp(18px, 5.2vw, 26px);
+    font-weight:800;
+    line-height:1.3;
+    word-break:keep-all;
+  }
+  .vs-label{
+    flex:0 0 auto;
+    font-size:13px;
+    font-weight:800;
+    color: var(--muted);
+    background:#fff;
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: var(--shadow);
+    align-self:center;
+    z-index:2;
+  }
+
+  /* ===== 결과 화면 ===== */
+  .result-screen{
+    width:100%;
+    max-width:520px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+  .champion-badge{
+    font-size:14px;
+    font-weight:800;
+    color:#a86a00;
+    background: linear-gradient(90deg,#ffe259,#ffa751);
+    padding:6px 18px;
+    border-radius:999px;
+    margin-bottom:16px;
+    box-shadow: var(--shadow);
+  }
+  .champion-card{
+    background: linear-gradient(160deg,#fff,#fff7e6);
+    border-radius:28px;
+    box-shadow: 0 16px 40px rgba(255,150,0,0.2);
+    padding:40px 20px 30px;
+    width:100%;
+    margin-bottom:24px;
+    border: 3px solid #ffd166;
+    position:relative;
+  }
+  .champion-crown{
+    font-size:34px;
+    position:absolute;
+    top:-22px;
+    left:50%;
+    transform: translateX(-50%);
+  }
+  .champion-word{
+    font-size: clamp(26px, 8vw, 38px);
+    font-weight:900;
+    word-break:keep-all;
+  }
+  .champion-tag{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:8px;
+    font-weight:600;
+  }
+  .rank-list{
+    width:100%;
+    text-align:left;
+    background:#fff;
+    border-radius:20px;
+    box-shadow: var(--shadow);
+    padding:8px 0;
+    margin-bottom:24px;
+    overflow:hidden;
+  }
+  .rank-row{
+    display:flex;
+    align-items:center;
+    padding:12px 18px;
+    border-bottom:1px solid #f2f0ee;
+    gap:12px;
+  }
+  .rank-row:last-child{ border-bottom:none; }
+  .rank-tier{
+    font-size:13px;
+    font-weight:800;
+    color:var(--accentB);
+    min-width:56px;
+    flex-shrink:0;
+  }
+  .rank-name{
+    font-size:15px;
+    font-weight:700;
+    flex:1;
+    word-break:keep-all;
+  }
+  .result-actions{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .toast{
+    position:fixed;
+    bottom:30px;
+    left:50%;
+    transform: translateX(-50%);
+    background: rgba(30,30,30,0.9);
+    color:#fff;
+    padding:10px 20px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease;
+    max-width:90vw;
+    text-align:center;
+  }
+  .toast.show{
+    opacity:1;
+    transform: translateX(-50%) translateY(-6px);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="title">🏆 단어 이상형 월드컵</div>
+    <p class="subtitle">주제를 고르거나 단어를 직접 입력해 토너먼트를 만들어보세요</p>
+  </div>
+
+  <!-- ===== 설정 화면 ===== -->
+  <div id="setupScreen" class="setup-screen">
+    <div>
+      <div class="section-label">1. 주제 선택 (선택 시 단어 자동 입력)</div>
+      <div class="topic-grid" id="topicGrid"></div>
+      <button class="topic-btn manual-btn" id="manualBtn" style="margin-top:10px;">✏️ 직접 입력 (자동 입력 없이 시작)</button>
+    </div>
+
+    <div class="topic-name-row">
+      <div class="section-label">2. 토너먼트 제목</div>
+      <input type="text" id="topicNameInput" class="topic-name-input" placeholder="예: 우리반 최애 과일은?" maxlength="30">
+    </div>
+
+    <div>
+      <div class="words-header">
+        <div class="section-label">3. 단어 입력 (최소 2개 ~ 최대 8개)</div>
+        <button class="btn small secondary" id="rerollBtn">🔀 다른 단어</button>
+      </div>
+      <p class="hint-text">빈 칸은 자동으로 제외돼요. 자동으로 채워진 단어도 자유롭게 수정할 수 있어요.</p>
+      <div class="word-list" id="wordList"></div>
+    </div>
+
+    <div class="error-text" id="errorText"></div>
+    <button class="btn" id="startBtn">토너먼트 시작하기</button>
+  </div>
+
+  <!-- ===== 매치 화면 ===== -->
+  <div id="matchScreen" class="match-screen hidden">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="progressText">매치 1 / 7</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="match-topic" id="matchTopic"></div>
+    <span class="round-badge" id="roundBadge">8강</span>
+    <div class="vs-wrap">
+      <div class="word-card cardA" id="cardA">
+        <div class="word-text" id="wordA">단어1</div>
+      </div>
+      <div class="vs-label">VS</div>
+      <div class="word-card cardB" id="cardB">
+        <div class="word-text" id="wordB">단어2</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 결과 화면 ===== -->
+  <div id="resultScreen" class="result-screen hidden">
+    <div class="champion-badge">🏆 최종 우승 🏆</div>
+    <div class="champion-card">
+      <div class="champion-crown">👑</div>
+      <div class="champion-word" id="championWord">단어</div>
+      <div class="champion-tag" id="championTag">이상형 월드컵 우승</div>
+    </div>
+    <div class="rank-list" id="rankList"></div>
+    <div class="result-actions">
+      <button class="btn" id="copyBtn">결과 복사하기</button>
+      <button class="btn secondary" id="restartBtn">다시 하기</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  // ===================== 데이터 =====================
+  const TOPICS = [
+    { key:'과일', emoji:'🍎', words:['사과','바나나','딸기','수박','포도','복숭아','오렌지','키위','망고','파인애플','자두','배'] },
+    { key:'동물', emoji:'🐶', words:['사자','호랑이','코끼리','기린','판다','토끼','강아지','고양이','곰','펭귄','다람쥐','여우'] },
+    { key:'음식', emoji:'🍔', words:['피자','치킨','떡볶이','김밥','라면','햄버거','초밥','파스타','짜장면','불고기','샌드위치','핫도그'] },
+    { key:'교과목', emoji:'📚', words:['국어','수학','과학','사회','영어','음악','미술','체육','도덕','실과','창의체험','안전한생활'] },
+    { key:'나라', emoji:'🌍', words:['한국','미국','일본','중국','프랑스','독일','영국','호주','캐나다','이탈리아','스페인','브라질'] },
+    { key:'색깔', emoji:'🎨', words:['빨강','주황','노랑','초록','파랑','남색','보라','분홍','하늘색','갈색','검정','흰색'] },
+    { key:'스포츠', emoji:'⚽', words:['축구','야구','농구','배구','수영','태권도','탁구','배드민턴','테니스','스케이트','볼링','골프'] },
+    { key:'직업', emoji:'👩‍⚕️', words:['선생님','의사','경찰관','소방관','요리사','가수','화가','과학자','운동선수','간호사','변호사','디자이너'] }
+  ];
+  const MAX_WORDS = 8;
+
+  let selectedTopicKey = null;
+  let bracket = [];       // 현재 라운드 참가자(단어) 배열, BYE는 null
+  let winnersNext = [];
+  let round = 1;
+  let totalRounds = 3;
+  let bracketSize = 8;
+  let matchIndex = 0;
+  let matchesPlayed = 0;
+  let totalMatches = 7;
+  let eliminated = {};
+  let champion = null;
+  let topicTitle = '단어';
+
+  // ---- DOM refs ----
+  const setupScreen = document.getElementById('setupScreen');
+  const matchScreen = document.getElementById('matchScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const topicGrid = document.getElementById('topicGrid');
+  const manualBtn = document.getElementById('manualBtn');
+  const topicNameInput = document.getElementById('topicNameInput');
+  const wordList = document.getElementById('wordList');
+  const rerollBtn = document.getElementById('rerollBtn');
+  const errorText = document.getElementById('errorText');
+  const startBtn = document.getElementById('startBtn');
+
+  const cardA = document.getElementById('cardA');
+  const cardB = document.getElementById('cardB');
+  const wordA = document.getElementById('wordA');
+  const wordB = document.getElementById('wordB');
+  const roundBadge = document.getElementById('roundBadge');
+  const matchTopic = document.getElementById('matchTopic');
+  const progressText = document.getElementById('progressText');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressFill = document.getElementById('progressFill');
+  const toast = document.getElementById('toast');
+
+  const championWord = document.getElementById('championWord');
+  const championTag = document.getElementById('championTag');
+  const rankList = document.getElementById('rankList');
+  const copyBtn = document.getElementById('copyBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  // ===================== 유틸 =====================
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+  function showToast(msg, ms){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toast.classList.remove('show'), ms || 1600);
+  }
+
+  // ===================== 설정 화면 =====================
+  function buildTopicGrid(){
+    topicGrid.innerHTML = '';
+    TOPICS.forEach(t=>{
+      const btn = document.createElement('button');
+      btn.className = 'topic-btn';
+      btn.dataset.key = t.key;
+      btn.innerHTML = `<span class="topic-emoji">${t.emoji}</span><span>${t.key}</span>`;
+      btn.addEventListener('click', ()=> applyTopic(t.key));
+      topicGrid.appendChild(btn);
+    });
+  }
+
+  function buildWordRows(){
+    wordList.innerHTML = '';
+    for(let i=0;i<MAX_WORDS;i++){
+      const row = document.createElement('div');
+      row.className = 'word-row';
+      row.innerHTML = `
+        <span class="word-idx">${i+1}</span>
+        <input type="text" class="word-input" data-idx="${i}" placeholder="단어 ${i+1}" maxlength="12">
+        <button class="word-clear" data-idx="${i}" type="button">✕</button>
+      `;
+      wordList.appendChild(row);
+    }
+    wordList.querySelectorAll('.word-clear').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = btn.dataset.idx;
+        const input = wordList.querySelector(`.word-input[data-idx="${idx}"]`);
+        input.value = '';
+        input.focus();
+      });
+    });
+  }
+
+  function getWordInputs(){
+    return Array.from(wordList.querySelectorAll('.word-input'));
+  }
+
+  function applyTopic(key){
+    selectedTopicKey = key;
+    document.querySelectorAll('.topic-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.key === key);
+    });
+    manualBtn.classList.remove('active');
+    if(!topicNameInput.value.trim() || TOPICS.some(t=>t.key === topicNameInput.value.trim())){
+      topicNameInput.value = key;
+    }
+    fillWordsFromTopic(key);
+  }
+
+  function fillWordsFromTopic(key){
+    const topic = TOPICS.find(t=>t.key === key);
+    if(!topic) return;
+    const picks = shuffle(topic.words).slice(0, MAX_WORDS);
+    const inputs = getWordInputs();
+    inputs.forEach((input, i)=>{
+      input.value = picks[i] || '';
+    });
+  }
+
+  manualBtn.addEventListener('click', ()=>{
+    selectedTopicKey = null;
+    document.querySelectorAll('.topic-btn').forEach(b=> b.classList.remove('active'));
+    manualBtn.classList.add('active');
+    getWordInputs().forEach(input=> input.value = '');
+    topicNameInput.value = '';
+    topicNameInput.focus();
+  });
+
+  rerollBtn.addEventListener('click', ()=>{
+    if(!selectedTopicKey){
+      showToast('먼저 위에서 주제를 선택해주세요 🙂');
+      return;
+    }
+    fillWordsFromTopic(selectedTopicKey);
+  });
+
+  startBtn.addEventListener('click', ()=>{
+    const raw = getWordInputs().map(i=> i.value.trim()).filter(Boolean);
+    const unique = [];
+    raw.forEach(w=>{ if(!unique.includes(w)) unique.push(w); });
+
+    if(unique.length < 2){
+      errorText.textContent = '최소 2개 이상의 단어를 입력해주세요.';
+      return;
+    }
+    errorText.textContent = '';
+    topicTitle = topicNameInput.value.trim() || '단어';
+    startTournament(unique);
+  });
+
+  // ===================== 토너먼트 엔진 =====================
+  function buildBracket(words){
+    const n = words.length;
+    let size = 2;
+    while(size < n) size *= 2;
+    const numByes = size - n;
+    const numMatches = size / 2;
+
+    const shuffledWords = shuffle(words.map(w=> ({ name:w })));
+    const byeMatchIdxs = new Set(shuffle([...Array(numMatches).keys()]).slice(0, numByes));
+
+    const flat = [];
+    let wi = 0;
+    for(let m=0; m<numMatches; m++){
+      if(byeMatchIdxs.has(m)){
+        flat.push(shuffledWords[wi++]);
+        flat.push(null); // BYE
+      } else {
+        flat.push(shuffledWords[wi++]);
+        flat.push(shuffledWords[wi++]);
+      }
+    }
+    return { flat, size };
+  }
+
+  function nameForRound(r, total){
+    const diff = total - r;
+    if(diff === 0) return '결승';
+    if(diff === 1) return '준결승';
+    if(diff === 2) return '8강';
+    return `${Math.pow(2, diff+1)}강`;
+  }
+
+  function startTournament(words){
+    const built = buildBracket(words);
+    bracket = built.flat;
+    bracketSize = built.size;
+    totalRounds = Math.round(Math.log2(bracketSize));
+    totalMatches = bracketSize - 1;
+    winnersNext = [];
+    round = 1;
+    matchIndex = 0;
+    matchesPlayed = 0;
+    eliminated = {};
+    champion = null;
+
+    setupScreen.classList.add('hidden');
+    resultScreen.classList.add('hidden');
+    matchScreen.classList.remove('hidden');
+    matchTopic.textContent = topicTitle + ' 이상형 월드컵';
+    renderMatch();
+  }
+
+  function updateProgress(){
+    progressText.textContent = `매치 ${Math.min(matchesPlayed+1, totalMatches)} / ${totalMatches}`;
+    const pct = Math.round((matchesPlayed/totalMatches)*100);
+    progressPercent.textContent = pct + '%';
+    progressFill.style.width = pct + '%';
+    roundBadge.textContent = nameForRound(round, totalRounds);
+  }
+
+  function renderMatch(){
+    const a = bracket[matchIndex*2];
+    const b = bracket[matchIndex*2+1];
+    updateProgress();
+    cardA.classList.remove('picked');
+    cardB.classList.remove('picked');
+    cardB.classList.remove('bye');
+
+    wordA.textContent = a.name;
+
+    if(b === null){
+      wordB.textContent = '부전승 (자동 진출)';
+      cardB.classList.add('bye');
+      cardA.style.pointerEvents = 'none';
+      cardB.style.pointerEvents = 'none';
+      showToast(`"${a.name}" 부전승으로 다음 라운드 진출!`, 1400);
+      setTimeout(()=>{
+        cardA.style.pointerEvents = '';
+        cardB.style.pointerEvents = '';
+        advance(a, null);
+      }, 1100);
+    } else {
+      wordB.textContent = b.name;
+      cardA.style.pointerEvents = '';
+      cardB.style.pointerEvents = '';
+    }
+  }
+
+  function advance(winner, loser){
+    winnersNext.push(winner);
+    if(loser){
+      eliminated[loser.name] = { word: loser, round: round };
+    }
+    matchesPlayed++;
+    matchIndex++;
+
+    if(matchIndex*2 >= bracket.length){
+      if(winnersNext.length === 1){
+        champion = winnersNext[0];
+        showResult();
+        return;
+      }
+      bracket = winnersNext;
+      winnersNext = [];
+      matchIndex = 0;
+      round++;
+    }
+    renderMatch();
+  }
+
+  function choose(pickedCard, winner, loser){
+    pickedCard.classList.add('picked');
+    cardA.style.pointerEvents = 'none';
+    cardB.style.pointerEvents = 'none';
+    setTimeout(()=>{
+      cardA.style.pointerEvents = '';
+      cardB.style.pointerEvents = '';
+      advance(winner, loser);
+    }, 260);
+  }
+
+  cardA.addEventListener('click', ()=>{
+    if(cardB.classList.contains('bye')) return;
+    const a = bracket[matchIndex*2];
+    const b = bracket[matchIndex*2+1];
+    choose(cardA, a, b);
+  });
+  cardB.addEventListener('click', ()=>{
+    if(cardB.classList.contains('bye')) return;
+    const a = bracket[matchIndex*2];
+    const b = bracket[matchIndex*2+1];
+    choose(cardB, b, a);
+  });
+
+  // ===================== 결과 화면 =====================
+  function getRankGroups(){
+    const runnerUp = [];
+    const semiLosers = [];
+    const otherLosers = [];
+    Object.values(eliminated).forEach(entry=>{
+      if(entry.round === totalRounds) runnerUp.push(entry.word);
+      else if(entry.round === totalRounds - 1) semiLosers.push(entry.word);
+      else otherLosers.push(entry.word);
+    });
+    return { runnerUp, semiLosers, otherLosers };
+  }
+
+  function showResult(){
+    matchScreen.classList.add('hidden');
+    resultScreen.classList.remove('hidden');
+    championWord.textContent = champion.name;
+    championTag.textContent = `${topicTitle} 이상형 월드컵 우승`;
+
+    const { runnerUp, semiLosers, otherLosers } = getRankGroups();
+    rankList.innerHTML = '';
+
+    function addRow(tierLabel, word){
+      const row = document.createElement('div');
+      row.className = 'rank-row';
+      row.innerHTML = `<span class="rank-tier">${tierLabel}</span><span class="rank-name">${word.name}</span>`;
+      rankList.appendChild(row);
+    }
+    runnerUp.forEach(w=> addRow('2위', w));
+    semiLosers.forEach(w=> addRow('공동 3위', w));
+    otherLosers.forEach(w=> addRow('공동 5위', w));
+  }
+
+  function buildResultText(){
+    const { runnerUp, semiLosers, otherLosers } = getRankGroups();
+    const lines = [];
+    lines.push(`🏆 ${topicTitle} 이상형 월드컵 결과 🏆`);
+    lines.push('');
+    lines.push(`🥇 1위: ${champion.name}`);
+    runnerUp.forEach(w=> lines.push(`🥈 2위: ${w.name}`));
+    if(semiLosers.length){
+      lines.push(`🥉 공동 3위: ${semiLosers.map(w=>w.name).join(', ')}`);
+    }
+    if(otherLosers.length){
+      lines.push(`5위: ${otherLosers.map(w=>w.name).join(', ')}`);
+    }
+    return lines.join('\n');
+  }
+
+  function copyResult(){
+    const text = buildResultText();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>{
+        showToast('결과가 복사되었습니다!');
+      }).catch(()=> fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try{
+      document.execCommand('copy');
+      showToast('결과가 복사되었습니다!');
+    }catch(e){
+      showToast('복사에 실패했습니다.');
+    }
+    document.body.removeChild(ta);
+  }
+
+  copyBtn.addEventListener('click', copyResult);
+  restartBtn.addEventListener('click', ()=>{
+    resultScreen.classList.add('hidden');
+    matchScreen.classList.add('hidden');
+    setupScreen.classList.remove('hidden');
+  });
+
+  // ===================== 초기화 =====================
+  buildTopicGrid();
+  buildWordRows();
+})();
+</script>
+</body>
+</html>

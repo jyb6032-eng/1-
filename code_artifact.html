@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>단어 토너먼트 이상형 월드컵</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom Animations */
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes slideUp {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(251, 191, 36, 1); }
+        }
+
+        .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .winner-glow { animation: pulseGlow 2s infinite; }
+
+        /* Card Interactions */
+        .battle-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .battle-card:active { transform: scale(0.96); }
+        @media (hover: hover) {
+            .battle-card:hover { transform: translateY(-4px) scale(1.02); }
+        }
+
+        /* Selection States */
+        .selected-card {
+            transform: scale(1.05) !important;
+            z-index: 10;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .unselected-card {
+            opacity: 0.3;
+            transform: scale(0.95) !important;
+        }
+
+        /* Confetti Canvas */
+        #confetti {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Toast Message */
+        #toast {
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translate(-50%, 20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        /* Dropdown styling */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1.5rem center;
+            background-size: 2em;
+        }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 left-1/2 bg-gray-800 text-white px-10 py-5 rounded-full shadow-lg z-50 flex items-center font-bold text-3xl">
+        <span id="toastMessage">알림 메시지</span>
+    </div>
+
+    <!-- SETUP VIEW -->
+    <div id="setupView" class="view-section flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full max-w-5xl mx-auto h-full animate-pop-in">
+        <div class="bg-white rounded-3xl shadow-xl w-full p-6 sm:p-12 border border-slate-100">
+            <div class="text-center mb-10">
+                <h1 class="text-6xl sm:text-7xl md:text-8xl font-black text-indigo-600 mb-6 tracking-tight">단어 토너먼트</h1>
+                <p class="text-2xl sm:text-4xl text-slate-500 font-medium break-keep">주제를 선택하거나 단어를 직접 입력하여 월드컵을 시작하세요!</p>
+            </div>
+
+            <!-- Theme Selector -->
+            <div class="mb-6 w-full max-w-3xl mx-auto">
+                <select id="themeSelector" onchange="handleThemeChange()" class="w-full bg-indigo-50 border-4 border-indigo-200 text-indigo-800 text-3xl sm:text-4xl font-bold rounded-2xl px-8 py-6 focus:outline-none focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition-all cursor-pointer shadow-sm">
+                    <option value="custom">✍️ 직접 입력하기 (자유 주제)</option>
+                    <option value="ai">✨ AI에게 주제 입력하고 추천받기</option>
+                    <option value="fruits">🍎 맛있는 과일</option>
+                    <option value="animals">🦁 귀여운 동물</option>
+                    <option value="foods">🍜 한국인이 좋아하는 음식</option>
+                    <option value="subjects">📚 학교 교과목</option>
+                    <option value="jobs">👨‍🍳 장래희망/직업</option>
+                    <option value="sports">⚽ 인기 스포츠</option>
+                    <option value="countries">✈️ 가고 싶은 나라</option>
+                    <option value="colors">🎨 좋아하는 색깔</option>
+                </select>
+            </div>
+
+            <!-- AI Theme Generator Input -->
+            <div id="aiInputSection" class="hidden mb-10 w-full max-w-3xl mx-auto flex flex-col sm:flex-row gap-4">
+                <input type="text" id="customThemeInput" placeholder="예: 무서운 귀신 이름, 우주 관련 단어" class="flex-1 bg-amber-50 border-4 border-amber-200 text-slate-800 text-3xl sm:text-4xl rounded-2xl px-6 py-5 focus:outline-none focus:ring-4 focus:ring-amber-300 focus:border-amber-500 font-bold placeholder:text-amber-300">
+                <button onclick="generateAIWords()" id="aiGenerateBtn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-3xl sm:text-4xl py-5 px-8 rounded-2xl transition-colors shadow-md whitespace-nowrap active:scale-95">
+                    <span id="aiBtnText">단어 추천받기</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12" id="inputContainer">
+                <!-- Inputs will be injected here by JS -->
+            </div>
+
+            <button onclick="startTournament()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-4xl sm:text-5xl py-8 rounded-2xl transition-colors shadow-lg shadow-indigo-200 active:scale-95">
+                토너먼트 시작하기 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- BATTLE VIEW -->
+    <div id="battleView" class="view-section hidden flex-1 flex flex-col w-full h-full bg-slate-50 relative">
+        <!-- Header -->
+        <div class="absolute top-0 w-full p-6 sm:p-8 text-center z-20 pointer-events-none">
+            <div class="inline-block bg-white/90 backdrop-blur-md px-10 py-4 rounded-full shadow-md font-black text-4xl sm:text-5xl text-indigo-700 border-2 border-slate-200">
+                <span id="roundTitle">8강</span> <span id="matchProgress" class="text-3xl text-slate-500 ml-4 font-bold">1/4</span>
+            </div>
+        </div>
+
+        <!-- VS Badge -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+            <div class="bg-black text-white font-black text-5xl sm:text-7xl italic w-32 h-32 sm:w-40 sm:h-40 rounded-full flex items-center justify-center shadow-2xl border-8 border-slate-50">
+                VS
+            </div>
+        </div>
+
+        <!-- Battle Cards -->
+        <div class="flex flex-col sm:flex-row flex-1 w-full h-full">
+            <!-- Left/Top Card -->
+            <div id="card1" onclick="selectWinner(0)" class="battle-card flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-blue-400 to-indigo-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <h2 id="word1" class="text-7xl sm:text-9xl md:text-[10rem] font-black text-white text-center drop-shadow-2xl break-keep z-10 w-full px-6">단어1</h2>
+            </div>
+            
+            <!-- Right/Bottom Card -->
+            <div id="card2" onclick="selectWinner(1)" class="battle-card flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-rose-400 to-orange-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <h2 id="word2" class="text-7xl sm:text-9xl md:text-[10rem] font-black text-white text-center drop-shadow-2xl break-keep z-10 w-full px-6">단어2</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT VIEW -->
+    <div id="resultView" class="view-section hidden flex-1 overflow-y-auto w-full relative bg-slate-50 pb-16">
+        <canvas id="confetti"></canvas>
+        
+        <div class="max-w-4xl mx-auto p-4 sm:p-8 w-full relative z-10 animate-slide-up mt-8 sm:mt-16">
+            <!-- Winner Card -->
+            <div class="bg-gradient-to-tr from-yellow-300 via-yellow-400 to-orange-400 rounded-[3rem] p-2 shadow-2xl winner-glow mb-12 text-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-6 opacity-50"><span class="text-9xl">👑</span></div>
+                <div class="bg-white rounded-[2.5rem] p-10 sm:p-16 h-full flex flex-col items-center justify-center relative z-10">
+                    <p class="text-yellow-600 font-bold text-4xl sm:text-5xl mb-6">최종 우승 후보 1위</p>
+                    <h2 id="winnerWord" class="text-8xl sm:text-[8rem] md:text-[10rem] font-black text-slate-800 break-keep leading-tight">우승단어</h2>
+                </div>
+            </div>
+
+            <!-- Rankings List -->
+            <div class="bg-white rounded-3xl shadow-lg border-2 border-slate-100 p-8 sm:p-10 mb-10">
+                <h3 class="text-4xl font-black text-slate-800 mb-10 flex items-center">
+                    <span class="mr-4 text-5xl">📊</span> 전체 순위 결과
+                </h3>
+                <ul id="rankingList" class="space-y-6">
+                    <!-- Rankings injected via JS -->
+                </ul>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-6">
+                <button onclick="copyResults()" class="flex-1 bg-slate-800 hover:bg-black text-white font-bold text-3xl sm:text-4xl py-8 px-6 rounded-2xl transition-colors shadow-md flex items-center justify-center active:scale-95">
+                    <svg class="w-10 h-10 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    결과 복사하기
+                </button>
+                <button onclick="resetGame()" class="flex-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold text-3xl sm:text-4xl py-8 px-6 rounded-2xl transition-colors shadow-sm flex items-center justify-center active:scale-95">
+                    <svg class="w-10 h-10 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    다시 하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Variables ---
+        const MAX_WORDS = 8;
+        let originalWords = [];
+        let currentRoundMatches = [];
+        let nextRoundWords = [];
+        let eliminatedRankings = []; 
+        let currentMatchIndex = 0;
+        let isTransitioning = false; 
+
+        // --- Themes Data (8 Predefined) ---
+        const themesData = {
+            fruits: ["사과", "바나나", "포도", "수박", "딸기", "복숭아", "오렌지", "망고"],
+            animals: ["강아지", "고양이", "토끼", "사자", "호랑이", "코끼리", "기린", "원숭이"],
+            foods: ["치킨", "피자", "삼겹살", "떡볶이", "짜장면", "햄버거", "김치찌개", "초밥"],
+            subjects: ["국어", "수학", "영어", "과학", "사회", "체육", "음악", "미술"],
+            jobs: ["선생님", "의사", "경찰관", "소방관", "유튜버", "프로게이머", "요리사", "가수"],
+            sports: ["축구", "농구", "야구", "배구", "수영", "태권도", "테니스", "배드민턴"],
+            countries: ["대한민국", "미국", "일본", "영국", "프랑스", "이탈리아", "스위스", "호주"],
+            colors: ["빨강", "파랑", "노랑", "초록", "보라", "분홍", "검정", "하양"]
+        };
+
+        // --- Initialization ---
+        function initSetup() {
+            const container = document.getElementById('inputContainer');
+            container.innerHTML = '';
+            for(let i = 0; i < MAX_WORDS; i++) {
+                container.innerHTML += `
+                    <div class="relative">
+                        <input type="text" id="input_${i}" placeholder="후보 단어 ${i+1}" 
+                            class="w-full bg-slate-50 border-4 border-slate-200 text-slate-800 text-3xl sm:text-4xl rounded-2xl px-6 py-5 focus:outline-none focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition-all placeholder:text-slate-300 font-bold">
+                    </div>
+                `;
+            }
+            showView('setupView');
+        }
+
+        // --- STREAMING_CHUNK:주제 선택 및 AI 단어 생성 로직... ---
+        function handleThemeChange() {
+            const theme = document.getElementById('themeSelector').value;
+            const aiInputSection = document.getElementById('aiInputSection');
+            
+            if (theme === 'ai') {
+                aiInputSection.classList.remove('hidden');
+                clearInputs();
+                return;
+            } else {
+                aiInputSection.classList.add('hidden');
+            }
+
+            if (theme === 'custom') {
+                clearInputs();
+                return;
+            }
+
+            // Predefined themes
+            const words = themesData[theme];
+            if (words) {
+                fillInputs(words);
+            }
+        }
+
+        function clearInputs() {
+            for(let i = 0; i < MAX_WORDS; i++) {
+                document.getElementById(`input_${i}`).value = '';
+            }
+        }
+
+        function fillInputs(words) {
+            for(let i = 0; i < MAX_WORDS; i++) {
+                document.getElementById(`input_${i}`).value = words[i] || '';
+            }
+            // Add flash animation
+            const container = document.getElementById('inputContainer');
+            container.classList.remove('animate-pop-in');
+            void container.offsetWidth; // trigger reflow
+            container.classList.add('animate-pop-in');
+        }
+
+        // AI Word Generation using Gemini API
+        async function generateAIWords() {
+            const themeInput = document.getElementById('customThemeInput').value.trim();
+            if(!themeInput) {
+                showToast("추천받고 싶은 주제를 입력해주세요!");
+                return;
+            }
+
+            const btn = document.getElementById('aiGenerateBtn');
+            const btnText = document.getElementById('aiBtnText');
+            btn.disabled = true;
+            btnText.innerHTML = '<span class="loader"></span> 생성 중...';
+            
+            try {
+                // Canvas API Key injects automatically when empty string is used
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                
+                const prompt = `'${themeInput}' 주제에 어울리는 한국어 단어 8개를 추천해주세요. 설명 없이 단어만 배열 형태로 반환하세요.`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: { type: "STRING" }
+                        }
+                    }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const wordsArray = JSON.parse(jsonString);
+                    
+                    if (wordsArray && Array.isArray(wordsArray)) {
+                        fillInputs(wordsArray.slice(0, 8));
+                        showToast("AI가 단어를 추천했습니다! ✨");
+                    }
+                } else {
+                    throw new Error("결과 없음");
+                }
+            } catch (error) {
+                console.error("AI Generation Error:", error);
+                showToast("AI 추천 중 오류가 발생했습니다. 다시 시도해주세요.");
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = '단어 추천받기';
+            }
+        }
+
+        // --- STREAMING_CHUNK:토너먼트 시작 및 뷰 관리 로직... ---
+        function showView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function startTournament() {
+            originalWords = [];
+            for(let i = 0; i < MAX_WORDS; i++) {
+                const val = document.getElementById(`input_${i}`).value.trim();
+                if(val) originalWords.push(val);
+            }
+
+            if(originalWords.length < 2) {
+                showToast("최소 2개 이상의 단어를 입력해주세요!");
+                return;
+            }
+
+            // Shuffle original words
+            let shuffled = [...originalWords].sort(() => Math.random() - 0.5);
+            eliminatedRankings = [];
+            
+            setupRound(shuffled);
+            showView('battleView');
+        }
+
+        function setupRound(participants) {
+            currentRoundMatches = [];
+            nextRoundWords = [];
+            
+            for(let i = 0; i < participants.length; i += 2) {
+                if(i + 1 < participants.length) {
+                    currentRoundMatches.push([participants[i], participants[i+1]]);
+                } else {
+                    currentRoundMatches.push([participants[i]]);
+                }
+            }
+            currentMatchIndex = 0;
+            renderMatch();
+        }
+
+        function getRoundName(totalParticipants) {
+            if (totalParticipants > 4) return '8강';
+            if (totalParticipants > 2) return '4강';
+            return '결승';
+        }
+
+        // --- STREAMING_CHUNK:대결 진행 및 우승자 선택 로직... ---
+        function renderMatch() {
+            if (currentMatchIndex >= currentRoundMatches.length) {
+                if (nextRoundWords.length === 1) {
+                    showResults(nextRoundWords[0]);
+                } else {
+                    setupRound(nextRoundWords);
+                }
+                return;
+            }
+
+            const match = currentRoundMatches[currentMatchIndex];
+            
+            if (match.length === 1) {
+                nextRoundWords.push(match[0]);
+                currentMatchIndex++;
+                renderMatch(); 
+                return;
+            }
+
+            isTransitioning = false;
+            
+            const card1 = document.getElementById('card1');
+            const card2 = document.getElementById('card2');
+            card1.className = "battle-card flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-blue-400 to-indigo-500 relative overflow-hidden group";
+            card2.className = "battle-card flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-rose-400 to-orange-500 relative overflow-hidden group";
+
+            document.getElementById('word1').innerText = match[0];
+            document.getElementById('word2').innerText = match[1];
+
+            const totalParticipantsThisRound = currentRoundMatches.reduce((acc, curr) => acc + curr.length, 0);
+            const roundName = getRoundName(totalParticipantsThisRound);
+            
+            const actualMatchesCount = currentRoundMatches.filter(m => m.length === 2).length;
+            let currentActualMatch = 0;
+            for(let i=0; i<=currentMatchIndex; i++) {
+                if(currentRoundMatches[i].length === 2) currentActualMatch++;
+            }
+
+            document.getElementById('roundTitle').innerText = roundName;
+            
+            if (roundName === '결승') {
+                document.getElementById('matchProgress').innerText = "";
+            } else {
+                document.getElementById('matchProgress').innerText = `${currentActualMatch}/${actualMatchesCount}`;
+            }
+        }
+
+        function selectWinner(winnerIndex) {
+            if(isTransitioning) return;
+            isTransitioning = true;
+
+            const match = currentRoundMatches[currentMatchIndex];
+            const winnerCard = document.getElementById(winnerIndex === 0 ? 'card1' : 'card2');
+            const loserCard = document.getElementById(winnerIndex === 0 ? 'card2' : 'card1');
+            
+            const winnerWord = match[winnerIndex];
+            const loserWord = match[winnerIndex === 0 ? 1 : 0];
+
+            winnerCard.classList.add('selected-card');
+            loserCard.classList.add('unselected-card');
+
+            nextRoundWords.push(winnerWord);
+            
+            const totalParticipantsThisRound = currentRoundMatches.reduce((acc, curr) => acc + curr.length, 0);
+            const roundName = getRoundName(totalParticipantsThisRound);
+            
+            eliminatedRankings.push({
+                word: loserWord,
+                roundEliminated: roundName
+            });
+
+            setTimeout(() => {
+                currentMatchIndex++;
+                renderMatch();
+            }, 600); 
+        }
+
+        // --- STREAMING_CHUNK:결과 표시 및 폭죽 효과, 복사 기능 로직... ---
+        function showResults(winner) {
+            eliminatedRankings.push({ word: winner, roundEliminated: '우승' });
+            const finalRanking = [...eliminatedRankings].reverse();
+
+            document.getElementById('winnerWord').innerText = winner;
+            const rankingList = document.getElementById('rankingList');
+            rankingList.innerHTML = '';
+
+            finalRanking.forEach((item, index) => {
+                if(index === 0) return; 
+                
+                let medalIcon = '🎗️';
+                let medalClass = 'text-slate-500';
+                if(index === 1) { medalIcon = '🥈'; medalClass = 'text-gray-400'; }
+                if(index === 2 || index === 3) { medalIcon = '🥉'; medalClass = 'text-amber-600'; }
+
+                let roundText = item.roundEliminated === '결승' ? '준우승' : `${item.roundEliminated} 진출`;
+
+                rankingList.innerHTML += `
+                    <li class="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                        <div class="flex items-center">
+                            <span class="text-5xl mr-6 w-12 text-center drop-shadow-sm ${medalClass}">${medalIcon}</span>
+                            <span class="font-bold text-4xl text-slate-800">${item.word}</span>
+                        </div>
+                        <span class="text-2xl font-bold px-5 py-3 bg-slate-200 text-slate-700 rounded-xl">${roundText}</span>
+                    </li>
+                `;
+            });
+
+            showView('resultView');
+            fireConfetti();
+        }
+
+        function copyResults() {
+            const finalRanking = [...eliminatedRankings].reverse();
+            let textToCopy = `🏆 단어 이상형 월드컵 결과 🏆\n\n`;
+            
+            finalRanking.forEach((item, index) => {
+                if(index === 0) {
+                    textToCopy += `🥇 1위: ${item.word} (우승)\n`;
+                } else if(index === 1) {
+                    textToCopy += `🥈 2위: ${item.word} (준우승)\n`;
+                } else if(index === 2 || index === 3) {
+                    textToCopy += `🥉 ${index + 1}위: ${item.word} (${item.roundEliminated})\n`;
+                } else {
+                    textToCopy += `🎗️ ${index + 1}위: ${item.word} (${item.roundEliminated})\n`;
+                }
+            });
+            textToCopy += `\n#단어이상형월드컵`;
+
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast("결과가 클립보드에 복사되었습니다! ✨");
+            } catch (err) {
+                showToast("복사에 실패했습니다.");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function resetGame() {
+            showView('setupView');
+            const canvas = document.getElementById('confetti');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const pieces = [];
+            const colors = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+
+            for (let i = 0; i < 150; i++) {
+                pieces.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    w: Math.random() * 15 + 10,
+                    h: Math.random() * 15 + 10,
+                    vx: Math.random() * 6 - 3,
+                    vy: Math.random() * 7 + 3,
+                    rot: Math.random() * 360,
+                    rotSpeed: Math.random() * 10 - 5,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+
+            function update() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                
+                pieces.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rot += p.rotSpeed;
+                    
+                    if (p.y < canvas.height) active = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                });
+
+                if (active && document.getElementById('resultView').classList.contains('hidden') === false) {
+                    requestAnimationFrame(update);
+                }
+            }
+            update();
+        }
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti');
+            if(canvas) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        });
+
+        // Init on load
+        window.onload = initSetup;
+    </script>
+</body>
+</html>
